@@ -8,8 +8,7 @@ import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from qt_material import apply_stylesheet
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QRadioButton, \
-    QCheckBox, QPushButton, QLineEdit, QVBoxLayout, QHBoxLayout, QWidget
+from PyQt5.QtWidgets import QApplication
 
 
 class Keyboard:
@@ -26,14 +25,11 @@ class Keyboard:
 class App(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
-
         self.setWindowTitle("鯊塵暴")
-        self.setGeometry(100, 100, 300, 200)
+        self.setGeometry(100, 100, 250, 200)
 
         self.delay = QtWidgets.QDoubleSpinBox(self)
         self.delay.setValue(3)
-        self.delay.setReadOnly(False)
-
         self.delay_label = QtWidgets.QLabel("Delay (seconds):", self)
         self.window_label = QtWidgets.QLabel("Window:", self)
         self.window = QtWidgets.QButtonGroup(self)
@@ -47,13 +43,6 @@ class App(QtWidgets.QWidget):
         self.start_button = QtWidgets.QPushButton("Start", self)
         self.stop_button = QtWidgets.QPushButton("Stop", self)
         self.stop_button.setDisabled(True)
-        self.start_button.setFocus()
-
-        # Connect the stateChanged signal to the enable_thread function
-        self.press_r_check.stateChanged.connect(self.enable_thread)
-        self.search_monster.stateChanged.connect(self.enable_thread)
-        self.delay.editingFinished.connect(self.restart_thread)
-        self.window.buttonClicked.connect(self.restart_thread)
 
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.addWidget(self.delay_label)
@@ -71,27 +60,21 @@ class App(QtWidgets.QWidget):
         self.window.addButton(self.window_option2)
         self.window.addButton(self.window_option3)
 
-        self.start_button.clicked.connect(self.start_loop_threaded)
-        self.stop_button.clicked.connect(self.stop_loop_threaded)
+        self.start_button.clicked.connect(self.start_loop)
+        self.stop_button.clicked.connect(self.stop_loop)
 
-        self.looping = None
-        self.thread = None
+        self.looping = False
 
-    def enable_thread(self, state):
-        if state == QtCore.Qt.Checked:
-            self.start_loop_threaded()
-        else:
-            self.stop_loop_threaded()
-            self.start_loop_threaded()
-
-    def restart_thread(self):
-        self.stop_loop_threaded()
-        self.start_loop_threaded()
-
-    def start_loop_threaded(self):
+    def start_loop(self):
         self.looping = True
         self.start_button.setDisabled(True)
         self.stop_button.setDisabled(False)
+        self.delay.setDisabled(True)
+        self.window_option1.setDisabled(True)
+        self.window_option2.setDisabled(True)
+        self.window_option3.setDisabled(True)
+        self.search_monster.setDisabled(True)
+        self.press_r_check.setDisabled(True)
 
         delay = self.delay.value()
         window_title = self.window.checkedButton().text()
@@ -103,18 +86,22 @@ class App(QtWidgets.QWidget):
         if not hwnd:
             message = f"Could not find window with title: {window_title}"
             win32api.MessageBox(0, message, "Window Handle", 0)
-            self.stop_loop_threaded()
+            self.stop_loop()
             return
 
-        self.thread = threading.Thread(target=self.loop, args=(keyboard, delay, search_monster, press_r), daemon=True)
-        self.thread.start()
+        thread = threading.Thread(target=self.loop, args=(keyboard, delay, search_monster, press_r), daemon=True)
+        thread.start()
 
-    def stop_loop_threaded(self):
+    def stop_loop(self):
         self.looping = False
-        if self.thread is not None:
-            self.thread.join()
-            self.thread = None
         self.start_button.setDisabled(False)
+        self.stop_button.setDisabled(True)
+        self.delay.setDisabled(False)
+        self.window_option1.setDisabled(False)
+        self.window_option2.setDisabled(False)
+        self.window_option3.setDisabled(False)
+        self.search_monster.setDisabled(False)
+        self.press_r_check.setDisabled(False)
         self.stop_button.setDisabled(True)
 
     def loop(self, keyboard, delay, search_monster, press_r):
