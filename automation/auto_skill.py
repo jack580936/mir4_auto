@@ -1,11 +1,11 @@
+import sys
 import threading
 from time import sleep
-import win32con
-import win32gui
-import win32api
-import sys
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+import win32con
+import win32api
+import win32gui
+from PyQt5 import QtWidgets
 from qt_material import apply_stylesheet
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication
@@ -25,40 +25,44 @@ class Keyboard:
 class App(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
+        self.key_presses = None
         self.setWindowTitle("鯊塵暴")
-        self.setGeometry(100, 100, 250, 200)
-
+        self.setGeometry(100, 100, 100, 100)
+        self.setWindowIcon(QIcon('../icon/sand-storm.ico'))
         self.delay = QtWidgets.QDoubleSpinBox(self)
-        self.delay.setValue(3)
+        self.delay.setValue(10)
         self.delay_label = QtWidgets.QLabel("Delay (seconds):", self)
         self.window_label = QtWidgets.QLabel("Window:", self)
         self.window = QtWidgets.QButtonGroup(self)
-        self.window_option1 = QtWidgets.QRadioButton("Mir4G[0]", self)
-        self.window_option2 = QtWidgets.QRadioButton("Mir4G[1]", self)
-        self.window_option2.setChecked(True)
-        self.window_option3 = QtWidgets.QRadioButton("Mir4G[2]", self)
+        self.window_option = QtWidgets.QComboBox(self)
+        self.window_option.addItems(["Mir4G[0]", "Mir4G[1]", "Mir4G[2]"])
+        self.window_option.setCurrentIndex(1)
+        self.hotkey_label = QtWidgets.QLabel("Hotkey:", self)
         self.search_monster = QtWidgets.QCheckBox("Search Monster", self)
-        self.search_monster.setChecked(True)
         self.press_r_check = QtWidgets.QCheckBox("Press R", self)
         self.start_button = QtWidgets.QPushButton("Start", self)
         self.stop_button = QtWidgets.QPushButton("Stop", self)
         self.stop_button.setDisabled(True)
+        self.checkboxes = []
 
-        self.layout = QtWidgets.QVBoxLayout(self)
-        self.layout.addWidget(self.delay_label)
-        self.layout.addWidget(self.delay)
-        self.layout.addWidget(self.window_label)
-        self.layout.addWidget(self.window_option1)
-        self.layout.addWidget(self.window_option2)
-        self.layout.addWidget(self.window_option3)
-        self.layout.addWidget(self.search_monster)
-        self.layout.addWidget(self.press_r_check)
-        self.layout.addWidget(self.start_button)
-        self.layout.addWidget(self.stop_button)
+        self.layout1 = QtWidgets.QVBoxLayout(self)
+        self.layout2 = QtWidgets.QGridLayout(self)
+        self.layout1.addWidget(self.delay_label)
+        self.layout1.addWidget(self.delay)
+        self.layout1.addWidget(self.window_label)
+        self.layout1.addWidget(self.window_option)
+        self.layout1.addWidget(self.hotkey_label)
+        self.layout1.addLayout(self.layout2)
+        self.layout2.addWidget(self.search_monster, 4, 0)
+        self.layout2.addWidget(self.press_r_check, 4, 1)
 
-        self.window.addButton(self.window_option1)
-        self.window.addButton(self.window_option2)
-        self.window.addButton(self.window_option3)
+        for i in range(6):
+            checkbox = QtWidgets.QCheckBox(f"Press {i + 1}", self)
+            checkbox.setChecked(False)
+            self.checkboxes.append(checkbox)
+            self.layout2.addWidget(checkbox, i % 3, i // 3)
+        self.layout1.addWidget(self.start_button)
+        self.layout1.addWidget(self.stop_button)
 
         self.start_button.clicked.connect(self.start_loop)
         self.stop_button.clicked.connect(self.stop_loop)
@@ -70,14 +74,17 @@ class App(QtWidgets.QWidget):
         self.start_button.setDisabled(True)
         self.stop_button.setDisabled(False)
         self.delay.setDisabled(True)
-        self.window_option1.setDisabled(True)
-        self.window_option2.setDisabled(True)
-        self.window_option3.setDisabled(True)
+        self.window_option.setDisabled(True)
         self.search_monster.setDisabled(True)
         self.press_r_check.setDisabled(True)
+        self.key_presses = []
 
+        for i, checkbox in enumerate(self.checkboxes):
+            self.checkboxes[i].setDisabled(True)
+            if checkbox.isChecked():
+                self.key_presses.append(ord(str(i + 1)))
         delay = self.delay.value()
-        window_title = self.window.checkedButton().text()
+        window_title = self.window_option.currentText()
         search_monster = self.search_monster.isChecked()
         press_r = self.press_r_check.isChecked()
         hwnd = win32gui.FindWindow(None, window_title)
@@ -97,12 +104,12 @@ class App(QtWidgets.QWidget):
         self.start_button.setDisabled(False)
         self.stop_button.setDisabled(True)
         self.delay.setDisabled(False)
-        self.window_option1.setDisabled(False)
-        self.window_option2.setDisabled(False)
-        self.window_option3.setDisabled(False)
+        self.window_option.setDisabled(False)
         self.search_monster.setDisabled(False)
         self.press_r_check.setDisabled(False)
         self.stop_button.setDisabled(True)
+        for i, checkbox in enumerate(self.checkboxes):
+            self.checkboxes[i].setDisabled(False)
 
     def loop(self, keyboard, delay, search_monster, press_r):
         while self.looping:
@@ -114,6 +121,10 @@ class App(QtWidgets.QWidget):
                 keyboard.press_key(ord('F'))
             if press_r:
                 keyboard.press_key(ord('R'))
+            if self.key_presses:
+                for key_press in self.key_presses:
+                    keyboard.press_key(key_press)
+                    sleep(1)
             sleep(delay)
 
         self.start_button.setDisabled(False)
@@ -123,8 +134,6 @@ class App(QtWidgets.QWidget):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     apply_stylesheet(app, theme='dark_cyan.xml')
-    icon = QIcon('../icon/sand-storm.ico')
-    app.setWindowIcon(icon)
     window = App()
     window.show()
     sys.exit(app.exec_())
