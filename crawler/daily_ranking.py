@@ -9,6 +9,8 @@ from datetime import datetime
 import threading
 
 import sys
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QCheckBox, \
     QRadioButton, QGroupBox, QFormLayout
 from qt_material import apply_stylesheet
@@ -28,7 +30,7 @@ class Window(QWidget):
         super().__init__()
         self.setGeometry(100, 100, 800, 600)
         self.setWindowTitle("Mir4 Ranking")
-
+        self.setWindowIcon(QIcon('../icon/shark.ico'))
         layout = QVBoxLayout()
         self.setLayout(layout)
 
@@ -194,8 +196,6 @@ class Window(QWidget):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     apply_stylesheet(app, theme='dark_teal.xml')
-    icon = QIcon('../icon/shark.ico')
-    app.setWindowIcon(icon)
     window = Window()
     window.show()
     sys.exit(app.exec_())
