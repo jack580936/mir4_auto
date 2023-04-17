@@ -1,8 +1,6 @@
-import os
 import csv
 import requests
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
+
 from bs4 import BeautifulSoup
 import re
 from datetime import datetime
@@ -87,21 +85,26 @@ class Window(QWidget):
             self.server_input.setText("")
 
     def get_rankings_button_clicked(self):
-        server_names = self.server_input.text().split(",")
-        self.message_label.setText("Retrieving rankings...")
-        self.textbox.clear()
+        try:
+            server_names = self.server_input.text().split(",")
+            self.message_label.setText("Retrieving rankings...")
+            self.textbox.clear()
 
-        # Use threading to avoid freezing the GUI
-        thread = threading.Thread(target=self.get_ranking_data_and_export, args=[server_names], daemon=True)
-        thread.start()
+            # Use threading to avoid freezing the GUI
+            thread = threading.Thread(target=self.get_ranking_data_and_export, args=[server_names], daemon=True)
+            thread.start()
+        except Exception as e:
+            self.print_message("Error: " + str(e))
 
     def get_ranking_data_and_export(self, target_server_list):
         self.get_rankings_button.setDisabled(True)
         error_list = self.get_several_ranking_data_then_export(target_server_list)
         if not error_list:
             self.message_label.setText("Rankings retrieved successfully.")
+            self.print_message("Rankings retrieved successfully.")
         else:
             self.message_label.setText("Error retrieving rankings for the following servers: " + ", ".join(error_list))
+            self.print_message("Error retrieving rankings for the following servers: " + ", ".join(error_list))
         self.get_rankings_button.setDisabled(False)
 
     def data_to_csv(self, data, filename):
