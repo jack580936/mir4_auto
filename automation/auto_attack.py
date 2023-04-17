@@ -64,44 +64,42 @@ class App(QtWidgets.QWidget):
         self.stop_button.clicked.connect(self.stop_loop)
 
         self.looping = False
+        self.thread = None
 
     def start_loop(self):
-        self.looping = True
-        self.start_button.setDisabled(True)
-        self.stop_button.setDisabled(False)
-        self.delay.setDisabled(True)
-        self.window_option.setDisabled(True)
-        self.search_monster.setDisabled(True)
-        self.press_r_check.setDisabled(True)
-
         delay = self.delay.value()
         window_title = self.window_option.currentText()
-        search_monster = self.search_monster.isChecked()
-        press_r = self.press_r_check.isChecked()
         hwnd = win32gui.FindWindow(None, window_title)
         keyboard = Keyboard(hwnd)
 
         if not hwnd:
             message = f"Could not find window with title: {window_title}"
             win32api.MessageBox(0, message, "Window Handle", 0)
-            self.stop_loop()
             return
 
-        thread = threading.Thread(target=self.loop, args=(keyboard, delay, search_monster, press_r), daemon=True)
-        thread.start()
+        self.looping = True
+        self.start_button.setDisabled(True)
+        self.stop_button.setDisabled(False)
+        self.delay.setDisabled(True)
+        self.window_option.setDisabled(True)
+
+        self.thread = threading.Thread(target=self.loop, args=(keyboard, delay), daemon=True)
+        self.thread.start()
 
     def stop_loop(self):
         self.looping = False
+        if self.thread.is_alive():
+            self.thread.join()
         self.start_button.setDisabled(False)
         self.stop_button.setDisabled(True)
         self.delay.setDisabled(False)
         self.window_option.setDisabled(False)
-        self.search_monster.setDisabled(False)
-        self.press_r_check.setDisabled(False)
         self.stop_button.setDisabled(True)
 
-    def loop(self, keyboard, delay, search_monster, press_r):
+    def loop(self, keyboard, delay):
         while self.looping:
+            search_monster = self.search_monster.isChecked()
+            press_r = self.press_r_check.isChecked()
             if search_monster:
                 keyboard.press_key(win32con.VK_TAB)
                 keyboard.press_key(win32con.VK_NEXT)
@@ -110,7 +108,10 @@ class App(QtWidgets.QWidget):
                 keyboard.press_key(ord('F'))
             if press_r:
                 keyboard.press_key(ord('R'))
-            sleep(delay)
+            for i in range(int(delay / 0.1)):
+                if not self.looping:
+                    break
+                sleep(0.1)
 
         self.start_button.setDisabled(False)
         self.stop_button.setDisabled(True)
