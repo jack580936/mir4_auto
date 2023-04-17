@@ -70,23 +70,9 @@ class App(QtWidgets.QWidget):
         self.looping = False
 
     def start_loop(self):
-        self.looping = True
-        self.start_button.setDisabled(True)
-        self.stop_button.setDisabled(False)
-        self.delay.setDisabled(True)
-        self.window_option.setDisabled(True)
-        self.search_monster.setDisabled(True)
-        self.press_r_check.setDisabled(True)
-        self.key_presses = []
 
-        for i, checkbox in enumerate(self.checkboxes):
-            self.checkboxes[i].setDisabled(True)
-            if checkbox.isChecked():
-                self.key_presses.append(ord(str(i + 1)))
         delay = self.delay.value()
         window_title = self.window_option.currentText()
-        search_monster = self.search_monster.isChecked()
-        press_r = self.press_r_check.isChecked()
         hwnd = win32gui.FindWindow(None, window_title)
         keyboard = Keyboard(hwnd)
 
@@ -96,8 +82,20 @@ class App(QtWidgets.QWidget):
             self.stop_loop()
             return
 
-        thread = threading.Thread(target=self.loop, args=(keyboard, delay, search_monster, press_r), daemon=True)
-        thread.start()
+        self.looping = True
+        self.start_button.setDisabled(True)
+        self.stop_button.setDisabled(False)
+        self.delay.setDisabled(True)
+        self.window_option.setDisabled(True)
+
+        self.looping = True
+        self.start_button.setDisabled(True)
+        self.stop_button.setDisabled(False)
+        self.delay.setDisabled(True)
+        self.window_option.setDisabled(True)
+
+        self.thread = threading.Thread(target=self.loop, args=(keyboard, delay), daemon=True)
+        self.thread.start()
 
     def stop_loop(self):
         self.looping = False
@@ -105,14 +103,18 @@ class App(QtWidgets.QWidget):
         self.stop_button.setDisabled(True)
         self.delay.setDisabled(False)
         self.window_option.setDisabled(False)
-        self.search_monster.setDisabled(False)
-        self.press_r_check.setDisabled(False)
         self.stop_button.setDisabled(True)
-        for i, checkbox in enumerate(self.checkboxes):
-            self.checkboxes[i].setDisabled(False)
 
-    def loop(self, keyboard, delay, search_monster, press_r):
+    def loop(self, keyboard, delay):
         while self.looping:
+
+            search_monster = self.search_monster.isChecked()
+            press_r = self.press_r_check.isChecked()
+            self.key_presses = []
+            for i, checkbox in enumerate(self.checkboxes):
+                if checkbox.isChecked():
+                    self.key_presses.append(ord(str(i + 1)))
+
             if search_monster:
                 keyboard.press_key(win32con.VK_TAB)
                 keyboard.press_key(win32con.VK_NEXT)
@@ -125,7 +127,10 @@ class App(QtWidgets.QWidget):
                 for key_press in self.key_presses:
                     keyboard.press_key(key_press)
                     sleep(1)
-            sleep(delay)
+            for i in range(int(delay / 0.1)):
+                if not self.looping:
+                    break
+                sleep(0.1)
 
         self.start_button.setDisabled(False)
         self.stop_button.setDisabled(True)
