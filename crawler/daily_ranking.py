@@ -7,7 +7,7 @@ from datetime import datetime
 import threading
 
 import sys
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt,QSettings
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QCheckBox, \
     QRadioButton, QGroupBox, QFormLayout
@@ -47,12 +47,8 @@ class Window(QWidget):
 
         self.server_input = QLineEdit(self)
         self.server_input.setText(
-            "ASIA252,ASIA163,ASIA251,ASIA253,ASIA254,ASIA261,ASIA262,ASIA263,ASIA264,ASIA271,ASIA272")
+            "ASIA081,ASIA021")
         form_layout.addRow(self.server_input)
-
-        self.checkbox = QCheckBox("Only 252 and 163", self)
-        self.checkbox.stateChanged.connect(self.use_default_servers)
-        group_layout.addWidget(self.checkbox)
 
         self.textbox = QTextEdit(self)
         self.textbox.setReadOnly(True)  # 設置為只讀
@@ -69,6 +65,21 @@ class Window(QWidget):
         self.get_rankings_button = QPushButton("Get Rankings", self)
         layout.addWidget(self.get_rankings_button)
         self.get_rankings_button.clicked.connect(self.get_rankings_button_clicked)
+        self.load_settings()
+
+    def load_settings(self):
+        settings = QSettings("Summer Sharky", "Sharky's Mir4 Ranking")
+        previous_server_input = settings.value("server_input")
+        if previous_server_input is not None:
+            self.server_input.setText(previous_server_input)
+
+    def save_settings(self):
+        settings = QSettings("Summer Sharky", "Sharky's Mir4 Ranking")
+        settings.setValue("server_input", self.server_input.text())
+
+    def closeEvent(self, event):
+        self.save_settings()
+        super().closeEvent(event)
 
     def print_message(self, message):
         # 將訊息逐行打印到QPlainTextEdit中
@@ -77,12 +88,6 @@ class Window(QWidget):
     def update_message_label(self, message):
         self.message_label.setText(message)
         QApplication.processEvents()
-
-    def use_default_servers(self, state):
-        if state == Qt.Checked:
-            self.server_input.setText("ASIA252,ASIA163")
-        else:
-            self.server_input.setText("")
 
     def get_rankings_button_clicked(self):
         try:
