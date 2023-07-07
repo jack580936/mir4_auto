@@ -10,7 +10,7 @@ import sys
 from PyQt5.QtCore import Qt,QSettings
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QCheckBox, \
-    QRadioButton, QGroupBox, QFormLayout
+    QRadioButton, QGroupBox, QFormLayout, QButtonGroup, QHBoxLayout
 from qt_material import apply_stylesheet
 
 png_to_class = {
@@ -49,6 +49,18 @@ class Window(QWidget):
         self.server_input.setText(
             "ASIA081,ASIA021")
         form_layout.addRow(self.server_input)
+
+        # add radio let user choose to get character ranking or clan ranking
+        self.character_ranking = QRadioButton("Character Ranking", self)
+        self.character_ranking.setChecked(True)
+        self.clan_ranking = QRadioButton("Clan Ranking", self)
+        self.clan_ranking.setChecked(False)
+        # two radio buttons 並排並靠左
+        self.radio_layout = QHBoxLayout()
+        self.radio_layout.addWidget(self.character_ranking)
+        self.radio_layout.addWidget(self.clan_ranking)
+        self.radio_layout.addStretch(1)
+        group_layout.addLayout(self.radio_layout)
 
         self.textbox = QTextEdit(self)
         self.textbox.setReadOnly(True)  # 設置為只讀
@@ -115,7 +127,10 @@ class Window(QWidget):
     def data_to_csv(self, data, filename):
         try:
             with open(filename, 'w', newline='', encoding='utf-8-sig') as csvfile:
-                fieldnames = ['Rank', 'Username', 'Points', 'Class', 'Clan']
+                if self.character_ranking.isChecked():
+                    fieldnames = ['Rank', 'Username', 'PowerScore', 'Class', 'Clan']
+                else:
+                    fieldnames = ['Rank', 'Clan', 'ClanLeader', 'ClanPowerScore']
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
                 # Write header row
@@ -132,6 +147,7 @@ class Window(QWidget):
         date_string = now.strftime("%Y%m%d")
         error_list = []
         servers = self.get_all_server_para()
+        data_type = "character" if self.character_ranking.isChecked() else "clan"
         target_servers = {}
         for server_name in target_server_list:
             if server_name not in servers:
@@ -149,7 +165,7 @@ class Window(QWidget):
                 error_list.append(server_name)
                 continue
             # 將結果存入csv檔案
-            filename = f"{server_name}_Ranking_{date_string}.csv"
+            filename = f"{server_name}_{data_type}_Ranking_{date_string}.csv"
 
             self.data_to_csv(csv_data, filename)  # Write to csv file
             self.print_message(f"Success: {server_name} Done.")
@@ -159,25 +175,12 @@ class Window(QWidget):
     def get_ranking_data(self, world_group_id, world_id, start_page, end_page):
         for attempt in range(10):
             try:
-                result_list = []
-
-                for page in range(start_page, end_page + 1):
-                    url = f"https://forum.mir4global.com/rank?ranktype=1&worldgroupid={world_group_id}&worldid={world_id}&classtype=&searchname=&page={page}"
-                    response = requests.get(url)
-                    soup = BeautifulSoup(response.text, "html.parser")
-                    result = soup.find("tbody", {'id': 'lists'})
-
-                    # 取出想要的內容
-                    for row in result.find_all('tr'):
-                        rank = row.find('span', {'class': 'num'}).text.strip()
-                        username = row.find('span', {'class': 'user_name'}).text.strip()
-                        points = row.find('td', {'class': 'text_right'}).text.strip()
-                        clan = row.find_all('td', {'class': None})[1].find('span').text.strip()
-                        png_name = re.search(r'char_\d+', row.find('span', {'class': 'user_icon'})['style']).group(0)
-                        class_name = png_to_class.get(png_name, 'Unknown')  # Look up class name in dictionary
-                        result_list.append(
-                            {'Rank': rank, 'Username': username, 'Points': points, 'Class': class_name, 'Clan': clan})
-                return result_list
+                # radio button 1: character ranking
+                # radio button 2: clan ranking
+                if self.character_ranking.isChecked():
+                    return self.fetch_character_ranking(end_page, start_page, world_group_id, world_id)
+                elif self.clan_ranking.isChecked():
+                    return self.fetch_clan_ranking(end_page, start_page, world_group_id, world_id)
 
             except Exception as e:
                 if attempt < 9:
@@ -185,9 +188,47 @@ class Window(QWidget):
                 else:
                     raise e
 
+    def fetch_clan_ranking(self, end_page, start_page, world_group_id, world_id):
+        result_list = []
+        for page in range(start_page, end_page + 1):
+            url = f"https://forum.mir4global.com/rank?ranktype=4&worldgroupid={world_group_id}&worldid={world_id}&classtype=&searchname=&page={page}"
+            response = requests.get(url)
+            soup = BeautifulSoup(response.text, "html.parser")
+            result = soup.find("tbody", {'id': 'lists'})
+
+            # 取出想要的內容
+            for row in result.find_all('tr'):
+                rank = row.find('span', {'class': 'num'}).text.strip()
+                clan = row.find_all('td', {'class': None})[0].find('span').text.strip()
+                leader = row.find('span', {'class': 'user_name'}).text.strip()
+                clan_points = row.find('td', {'class': 'text_right'}).text.strip()
+                result_list.append(
+                    {'Rank': rank,  'Clan': clan, 'ClanLeader': leader, 'ClanPowerScore': clan_points})
+        return result_list
+
+    def fetch_character_ranking(self, end_page, start_page, world_group_id, world_id):
+        result_list = []
+        for page in range(start_page, end_page + 1):
+            url = f"https://forum.mir4global.com/rank?ranktype=1&worldgroupid={world_group_id}&worldid={world_id}&classtype=&searchname=&page={page}"
+            response = requests.get(url)
+            soup = BeautifulSoup(response.text, "html.parser")
+            result = soup.find("tbody", {'id': 'lists'})
+
+            # 取出想要的內容
+            for row in result.find_all('tr'):
+                rank = row.find('span', {'class': 'num'}).text.strip()
+                username = row.find('span', {'class': 'user_name'}).text.strip()
+                points = row.find('td', {'class': 'text_right'}).text.strip()
+                clan = row.find_all('td', {'class': None})[1].find('span').text.strip()
+                png_name = re.search(r'char_\d+', row.find('span', {'class': 'user_icon'})['style']).group(0)
+                class_name = png_to_class.get(png_name, 'Unknown')  # Look up class name in dictionary
+                result_list.append(
+                    {'Rank': rank, 'Username': username, 'PowerScore': points, 'Class': class_name, 'Clan': clan})
+        return result_list
+
     def get_all_server_para(self):
         response = requests.get(
-            'https://forum.mir4global.com/rank?ranktype=1&worldgroupid=61&worldid=302&classtype=&searchname=&page=1')
+            'https://forum.mir4global.com/rank?ranktype=1')
         soup = BeautifulSoup(response.text, "html.parser")
         data_dict = {}
 
