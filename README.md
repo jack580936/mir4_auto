@@ -1,10 +1,16 @@
-# Mir4 RankingV1.0.0
+# Mir4 RankingV1.2.0
 
-可以輸入伺服器名稱(如: `ASIA252,ASIA163` )查找所選伺服器的前1000名
+### 更新內容
+
+* 新增撈取門派排名選項
+
+---
+
+可以輸入伺服器名稱(如: `ASIA081,ASIA021` )查找所選伺服器的前1000名
 
 有機率失敗，就再多試幾次就會成功囉 :D
 
-![image](https://user-images.githubusercontent.com/55965558/232232134-ab8cbab2-8f26-4140-a7fd-ab4cb9bd5119.png)
+![image](https://github.com/jack580936/mir4_auto/assets/55965558/4f67d03c-9e7e-429c-881c-1dcf24922db2)
 
 #### icon的來源
 
@@ -12,7 +18,7 @@
 
 ---
 
-# 鯊塵暴v1.1.0
+# 鯊塵暴v1.0.0
 
 就是下面的 `SharkyStorm.exe`
 
